@@ -76,4 +76,37 @@ public class UserController : ControllerBase
             isActive = user.MembershipStatus == MembershipStatus.Active
         });
     }
+    [HttpPost(Name = "CreateUser")]
+    public ActionResult<User> Create(User user)
+    {
+        if (user.UserId == Guid.Empty)
+        {
+            user.UserId = Guid.NewGuid();
+        }
+
+        user.TimeCreated = DateTime.UtcNow;
+        Users.Add(user);
+
+        return CreatedAtRoute("GetUserById", new { userId = user.UserId }, user);
+    }
+    
+    [HttpPut("{userId}", Name = "UpdateUser")]
+    public IActionResult Update(Guid userId, User updatedUser)
+    {
+        var existingUser = Users.FirstOrDefault(u => u.UserId == userId);
+
+        if (existingUser is null)
+        {
+            return NotFound();
+        }
+
+        existingUser.FirstName = updatedUser.FirstName;
+        existingUser.LastName = updatedUser.LastName;
+        existingUser.Email = updatedUser.Email;
+        existingUser.PhoneNumber = updatedUser.PhoneNumber;
+        existingUser.Role = updatedUser.Role;
+        existingUser.MembershipStatus = updatedUser.MembershipStatus;
+
+        return NoContent();
+    }
 }

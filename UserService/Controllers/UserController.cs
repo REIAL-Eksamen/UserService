@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using UserService.Models;
+using UserService.DTOs; // ← tilføjet
+
 namespace UserService.Controllers;
 
 [ApiController]
@@ -39,15 +41,27 @@ public class UserController : ControllerBase
         _logger = logger;
     }
 
+    // ← tilføjet hjælpemetode
+    private static UserResponseDto MapToDto(User u) => new()
+    {
+        UserId = u.UserId,
+        FirstName = u.FirstName,
+        LastName = u.LastName,
+        Email = u.Email,
+        PhoneNumber = u.PhoneNumber,
+        Role = u.Role.ToString(),
+        MembershipStatus = u.MembershipStatus.ToString(),
+        TimeCreated = u.TimeCreated
+    };
 
     [HttpGet(Name = "GetUsers")]
-    public IEnumerable<User> Get()
+    public IEnumerable<UserResponseDto> Get() // ← User → UserResponseDto
     {
-        return Users;
+        return Users.Select(MapToDto);
     }
 
     [HttpGet("{userId}", Name = "GetUserById")]
-    public ActionResult<User> GetById(Guid userId)
+    public ActionResult<UserResponseDto> GetById(Guid userId) // ← User → UserResponseDto
     {
         var user = Users.FirstOrDefault(u => u.UserId == userId);
 
@@ -56,11 +70,11 @@ public class UserController : ControllerBase
             return NotFound();
         }
 
-        return user;
+        return Ok(MapToDto(user)); // ← MapToDto tilføjet
     }
 
     [HttpGet("{userId}/membership-status", Name = "GetMembershipStatus")]
-    public ActionResult<object> GetMembershipStatus(Guid userId)
+    public ActionResult<object> GetMembershipStatus(Guid userId) // ← uændret
     {
         var user = Users.FirstOrDefault(u => u.UserId == userId);
 
@@ -76,22 +90,28 @@ public class UserController : ControllerBase
             isActive = user.MembershipStatus == MembershipStatus.Active
         });
     }
+
     [HttpPost(Name = "CreateUser")]
-    public ActionResult<User> Create(User user)
+    public ActionResult<UserResponseDto> Create(CreateUserDto dto) // ← User → CreateUserDto
     {
-        if (user.UserId == Guid.Empty)
+        var user = new User
         {
-            user.UserId = Guid.NewGuid();
-        }
+            UserId = Guid.NewGuid(),
+            FirstName = dto.FirstName,
+            LastName = dto.LastName,
+            Email = dto.Email,
+            PhoneNumber = dto.PhoneNumber,
+            Role = dto.Role,
+            MembershipStatus = dto.MembershipStatus,
+            TimeCreated = DateTime.UtcNow
+        };
 
-        user.TimeCreated = DateTime.UtcNow;
         Users.Add(user);
-
-        return CreatedAtRoute("GetUserById", new { userId = user.UserId }, user);
+        return CreatedAtRoute("GetUserById", new { userId = user.UserId }, MapToDto(user));
     }
-    
+
     [HttpPut("{userId}", Name = "UpdateUser")]
-    public IActionResult Update(Guid userId, User updatedUser)
+    public IActionResult Update(Guid userId, UpdateUserDto dto) // ← User → UpdateUserDto
     {
         var existingUser = Users.FirstOrDefault(u => u.UserId == userId);
 
@@ -100,12 +120,12 @@ public class UserController : ControllerBase
             return NotFound();
         }
 
-        existingUser.FirstName = updatedUser.FirstName;
-        existingUser.LastName = updatedUser.LastName;
-        existingUser.Email = updatedUser.Email;
-        existingUser.PhoneNumber = updatedUser.PhoneNumber;
-        existingUser.Role = updatedUser.Role;
-        existingUser.MembershipStatus = updatedUser.MembershipStatus;
+        existingUser.FirstName = dto.FirstName;
+        existingUser.LastName = dto.LastName;
+        existingUser.Email = dto.Email;
+        existingUser.PhoneNumber = dto.PhoneNumber;
+        existingUser.Role = dto.Role;
+        existingUser.MembershipStatus = dto.MembershipStatus;
 
         return NoContent();
     }

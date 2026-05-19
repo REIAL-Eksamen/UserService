@@ -19,7 +19,6 @@ public class UserControllerTests
     {
         _mockRepository = new Mock<IUserRepository>();
         _mockLogger = new Mock<ILogger<UserController>>();
-
         _controller = new UserController(_mockRepository.Object, _mockLogger.Object);
     }
 
@@ -35,7 +34,7 @@ public class UserControllerTests
             LastName = "Test",
             Email = "enni@example.com",
             PhoneNumber = "12345678",
-            Role = RoleType.Member,
+            Membership = MembershipType.Standard,
             MembershipStatus = MembershipStatus.Active,
             TimeCreated = DateTime.UtcNow
         };

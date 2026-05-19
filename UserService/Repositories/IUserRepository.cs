@@ -8,4 +8,5 @@ public interface IUserRepository
     void Add(User user);
     
     bool Update(Guid userId, User updatedUser);
+    bool Delete(Guid userId);
 }

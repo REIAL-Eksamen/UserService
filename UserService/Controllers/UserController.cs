@@ -1,11 +1,12 @@
-using Microsoft.AspNetCore.Mvc;
 using UserService.Models;
+using Microsoft.AspNetCore.Mvc;
 using UserService.Repositories;
+using UserService.DTOs;
 
 namespace UserService.Controllers;
 
 [ApiController]
-[Route("[controller]")]
+[Route("api/users")]
 public class UserController : ControllerBase
 {
     private readonly IUserRepository _userRepository;
@@ -54,20 +55,52 @@ public class UserController : ControllerBase
         });
     }
 
+    [HttpGet("{userId}/membership", Name = "GetMembership")]
+    public ActionResult<object> GetMembership(Guid userId)
+    {
+        var user = _userRepository.GetById(userId);
+
+        if (user is null)
+        {
+            return NotFound();
+        }
+
+        return Ok(new
+        {
+            userId = user.UserId,
+            membership = user.Membership.ToString(),
+            membershipType = (int)user.Membership
+        });
+    }
+
+    [HttpGet("by-membership/{membershipType}", Name = "GetByMembership")]
+    public ActionResult<IEnumerable<User>> GetByMembership(MembershipType membershipType)
+    {
+        var users = _userRepository.GetAll()
+            .Where(u => u.Membership == membershipType);
+
+        return Ok(users);
+    }
+
     [HttpPost(Name = "CreateUser")]
-    public ActionResult<User> Create(User user)
+    public ActionResult<User> Create([FromBody] CreateUserDto dto)
     {
         if (!ModelState.IsValid)
         {
             return BadRequest(ModelState);
         }
 
-        if (user.UserId == Guid.Empty)
+        var user = new User
         {
-            user.UserId = Guid.NewGuid();
-        }
-
-        user.TimeCreated = DateTime.UtcNow;
+            UserId = Guid.NewGuid(),
+            FirstName = dto.FirstName!,
+            LastName = dto.LastName!,
+            Email = dto.Email!,
+            PhoneNumber = dto.PhoneNumber,
+            Membership = dto.Membership,
+            MembershipStatus = dto.MembershipStatus,
+            TimeCreated = DateTime.UtcNow
+        };
 
         _userRepository.Add(user);
 
@@ -75,8 +108,18 @@ public class UserController : ControllerBase
     }
 
     [HttpPut("{userId}", Name = "UpdateUser")]
-    public IActionResult Update(Guid userId, [FromBody] User updatedUser)
+    public IActionResult Update(Guid userId, [FromBody] UpdateUserDto dto)
     {
+        var updatedUser = new User
+        {
+            FirstName = dto.FirstName!,
+            LastName = dto.LastName!,
+            Email = dto.Email!,
+            PhoneNumber = dto.PhoneNumber,
+            Membership = dto.Membership,
+            MembershipStatus = dto.MembershipStatus
+        };
+
         var updated = _userRepository.Update(userId, updatedUser);
 
         if (!updated)
@@ -86,5 +129,17 @@ public class UserController : ControllerBase
 
         return NoContent();
     }
-    
+
+    [HttpDelete("{userId}", Name = "DeleteUser")]
+    public IActionResult Delete(Guid userId)
+    {
+        var deleted = _userRepository.Delete(userId);
+
+        if (!deleted)
+        {
+            return NotFound();
+        }
+
+        return NoContent();
+    }
 }

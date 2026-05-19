@@ -13,7 +13,7 @@ public class InMemoryUserRepository : IUserRepository
             LastName = "Test",
             Email = "enni@example.com",
             PhoneNumber = "12345678",
-            Role = RoleType.Member,
+            Membership = MembershipType.Standard,
             MembershipStatus = MembershipStatus.Active,
             TimeCreated = DateTime.UtcNow
         },
@@ -24,41 +24,29 @@ public class InMemoryUserRepository : IUserRepository
             LastName = "Admin",
             Email = "admin@example.com",
             PhoneNumber = "87654321",
-            Role = RoleType.Admin,
+            Membership = MembershipType.Premium,
             MembershipStatus = MembershipStatus.Active,
             TimeCreated = DateTime.UtcNow
         }
     ];
 
-    public IEnumerable<User> GetAll()
-    {
-        return _users;
-    }
+    public IEnumerable<User> GetAll() => _users;
 
-    public User? GetById(Guid userId)
-    {
-        return _users.FirstOrDefault(user => user.UserId == userId);
-    }
+    public User? GetById(Guid userId) =>
+        _users.FirstOrDefault(user => user.UserId == userId);
 
-    public void Add(User user)
-    {
-        _users.Add(user);
-    }
+    public void Add(User user) => _users.Add(user);
 
     public bool Update(Guid userId, User updatedUser)
     {
         var existingUser = GetById(userId);
-
-        if (existingUser is null)
-        {
-            return false;
-        }
+        if (existingUser is null) return false;
 
         existingUser.FirstName = updatedUser.FirstName;
         existingUser.LastName = updatedUser.LastName;
         existingUser.Email = updatedUser.Email;
         existingUser.PhoneNumber = updatedUser.PhoneNumber;
-        existingUser.Role = updatedUser.Role;
+        existingUser.Membership = updatedUser.Membership;
         existingUser.MembershipStatus = updatedUser.MembershipStatus;
 
         return true;
@@ -67,11 +55,7 @@ public class InMemoryUserRepository : IUserRepository
     public bool Delete(Guid userId)
     {
         var user = GetById(userId);
-
-        if (user is null)
-        {
-            return false;
-        }
+        if (user is null) return false;
 
         _users.Remove(user);
         return true;

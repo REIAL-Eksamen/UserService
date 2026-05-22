@@ -21,21 +21,28 @@ public class MongoUserRepository : IUserRepository
     public IEnumerable<User> GetAll() =>
         _users.Find(_ => true).ToList();
 
-    public User? GetById(Guid userId) =>
-        _users.Find(u => u.UserId == userId).FirstOrDefault();
+    public User? GetById(string id) =>
+        _users.Find(u => u.Id == id).FirstOrDefault();
 
-    public void Add(User user) =>
-        _users.InsertOne(user);
-
-    public bool Update(Guid userId, User updatedUser)
+    public void Add(User user)
     {
-        var result = _users.ReplaceOne(u => u.UserId == userId, updatedUser);
+        user.Id = null; // MongoDB creates _id automatically
+        user.TimeCreated = DateTime.UtcNow;
+
+        _users.InsertOne(user);
+    }
+
+    public bool Update(string id, User updatedUser)
+    {
+        updatedUser.Id = id;
+
+        var result = _users.ReplaceOne(u => u.Id == id, updatedUser);
         return result.ModifiedCount > 0;
     }
 
-    public bool Delete(Guid userId)
+    public bool Delete(string id)
     {
-        var result = _users.DeleteOne(u => u.UserId == userId);
+        var result = _users.DeleteOne(u => u.Id == id);
         return result.DeletedCount > 0;
     }
 }

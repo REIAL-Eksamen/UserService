@@ -25,7 +25,7 @@ public class UserController : ControllerBase
     }
 
     [HttpGet("{userId}", Name = "GetUserById")]
-    public ActionResult<User> GetById(Guid userId)
+    public ActionResult<User> GetById(string userId)
     {
         var user = _userRepository.GetById(userId);
 
@@ -38,7 +38,7 @@ public class UserController : ControllerBase
     }
 
     [HttpGet("{userId}/membership-status", Name = "GetMembershipStatus")]
-    public ActionResult<object> GetMembershipStatus(Guid userId)
+    public ActionResult<object> GetMembershipStatus(string userId)
     {
         var user = _userRepository.GetById(userId);
 
@@ -49,14 +49,14 @@ public class UserController : ControllerBase
 
         return Ok(new
         {
-            userId = user.UserId,
+            userId = user.Id,
             membershipStatus = user.MembershipStatus.ToString(),
             isActive = user.MembershipStatus == MembershipStatus.Active
         });
     }
 
     [HttpGet("{userId}/membership", Name = "GetMembership")]
-    public ActionResult<object> GetMembership(Guid userId)
+    public ActionResult<object> GetMembership(string userId)
     {
         var user = _userRepository.GetById(userId);
 
@@ -67,7 +67,7 @@ public class UserController : ControllerBase
 
         return Ok(new
         {
-            userId = user.UserId,
+            userId = user.Id,
             membership = user.Membership.ToString(),
             membershipType = (int)user.Membership
         });
@@ -92,7 +92,6 @@ public class UserController : ControllerBase
 
         var user = new User
         {
-            UserId = Guid.NewGuid(),
             FirstName = dto.FirstName!,
             LastName = dto.LastName!,
             Email = dto.Email!,
@@ -104,14 +103,15 @@ public class UserController : ControllerBase
 
         _userRepository.Add(user);
 
-        return CreatedAtRoute("GetUserById", new { userId = user.UserId }, user);
+        return CreatedAtRoute("GetUserById", new { userId = user.Id }, user);
     }
 
     [HttpPut("{userId}", Name = "UpdateUser")]
-    public IActionResult Update(Guid userId, [FromBody] UpdateUserDto dto)
+    public IActionResult Update(string userId, [FromBody] UpdateUserDto dto)
     {
         var updatedUser = new User
         {
+            Id = userId,
             FirstName = dto.FirstName!,
             LastName = dto.LastName!,
             Email = dto.Email!,
@@ -131,7 +131,7 @@ public class UserController : ControllerBase
     }
 
     [HttpDelete("{userId}", Name = "DeleteUser")]
-    public IActionResult Delete(Guid userId)
+    public IActionResult Delete(string userId)
     {
         var deleted = _userRepository.Delete(userId);
 

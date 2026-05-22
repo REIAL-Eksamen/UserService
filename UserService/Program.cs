@@ -11,6 +11,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
+//denne linje bruges til at tilknytte til CosmosDB i stedet for memorybase.
 builder.Services.AddSingleton<IUserRepository, MongoUserRepository>();
 
 var app = builder.Build();

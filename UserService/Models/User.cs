@@ -8,6 +8,7 @@ public class User
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]
     public string? Id { get; set; }
+    public string? AuthId { get; set; }
 
     public required string FirstName { get; set; }
     public required string LastName { get; set; }

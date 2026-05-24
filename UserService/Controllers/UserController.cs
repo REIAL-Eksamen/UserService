@@ -92,6 +92,7 @@ public class UserController : ControllerBase
 
         var user = new User
         {
+            AuthId = dto.AuthId,
             FirstName = dto.FirstName!,
             LastName = dto.LastName!,
             Email = dto.Email!,

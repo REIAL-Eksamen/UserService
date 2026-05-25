@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using UserService.Models;
 using Microsoft.AspNetCore.Mvc;
 using UserService.Repositories;
@@ -30,6 +32,27 @@ public class UserController : ControllerBase
         var user = _userRepository.GetById(userId);
 
         if (user is null)
+        {
+            return NotFound();
+        }
+
+        return Ok(user);
+    }
+    
+    [Authorize]
+    [HttpGet("me")]
+    public ActionResult<User> GetCurrentUser()
+    {
+        var authId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (string.IsNullOrEmpty(authId))
+        {
+            return Unauthorized();
+        }
+
+        var user = _userRepository.GetByAuthId(authId);
+
+        if (user == null)
         {
             return NotFound();
         }

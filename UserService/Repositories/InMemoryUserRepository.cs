@@ -16,6 +16,11 @@ public class InMemoryUserRepository : IUserRepository
         return _users.FirstOrDefault(u => u.Id == userId);
     }
 
+    public User? GetByAuthId(string authId)
+    {
+        throw new NotImplementedException();
+    }
+
     public void Add(User user)
     {
         user.Id ??= Guid.NewGuid().ToString();

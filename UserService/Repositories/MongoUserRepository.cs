@@ -23,6 +23,9 @@ public class MongoUserRepository : IUserRepository
 
     public User? GetById(string id) =>
         _users.Find(u => u.Id == id).FirstOrDefault();
+    
+    public User? GetByAuthId(string authId) =>
+        _users.Find(u => u.AuthId == authId).FirstOrDefault();
 
     public void Add(User user)
     {

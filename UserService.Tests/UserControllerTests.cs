@@ -25,11 +25,11 @@ public class UserControllerTests
     [TestMethod]
     public void GetById_ReturnsOk_WhenUserExists()
     {
-        var userId = Guid.NewGuid();
+        var userId = Guid.NewGuid().ToString();
 
         var user = new User
         {
-            UserId = userId,
+            Id = userId,
             FirstName = "Enni",
             LastName = "Test",
             Email = "enni@example.com",
@@ -51,13 +51,13 @@ public class UserControllerTests
         var returnedUser = okResult?.Value as User;
 
         Assert.IsNotNull(returnedUser);
-        Assert.AreEqual(userId, returnedUser.UserId);
+        Assert.AreEqual(userId, returnedUser.Id);
     }
 
     [TestMethod]
     public void GetById_ReturnsNotFound_WhenUserDoesNotExist()
     {
-        var userId = Guid.NewGuid();
+        var userId = Guid.NewGuid().ToString();
 
         _mockRepository
             .Setup(repository => repository.GetById(userId))
@@ -66,5 +66,19 @@ public class UserControllerTests
         var result = _controller.GetById(userId);
 
         Assert.IsInstanceOfType(result.Result, typeof(NotFoundResult));
+    }
+    
+    [TestMethod]
+    public void Delete_ReturnsNotFound_WhenUserDoesNotExist()
+    {
+        var userId = Guid.NewGuid().ToString();
+
+        _mockRepository
+            .Setup(repository => repository.Delete(userId))
+            .Returns(false);
+
+        var result = _controller.Delete(userId);
+
+        Assert.IsInstanceOfType(result, typeof(NotFoundResult));
     }
 }

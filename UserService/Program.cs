@@ -6,6 +6,7 @@ using MongoDB.Bson.Serialization.Serializers;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using UserService.Services;
 
 BsonSerializer.RegisterSerializer(new GuidSerializer(GuidRepresentation.Standard));
 
@@ -17,6 +18,7 @@ builder.Services.AddOpenApi();
 //denne linje bruges til at tilknytte til CosmosDB i stedet for memorybase.
 builder.Services.AddSingleton<IUserRepository, MongoUserRepository>();
 
+builder.Services.AddScoped<IUserService, UserService.Services.UserService>();
 // Fiks det her med vault
 var jwtIssuer = ""; // skal matche AuthService
 var jwtSecret = ""; // samme som AuthService

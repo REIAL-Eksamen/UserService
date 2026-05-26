@@ -1,9 +1,9 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
-using UserService.Models;
 using Microsoft.AspNetCore.Mvc;
-using UserService.Repositories;
 using UserService.DTOs;
+using UserService.Models;
+using UserService.Services;
 
 namespace UserService.Controllers;
 
@@ -11,25 +11,25 @@ namespace UserService.Controllers;
 [Route("api/users")]
 public class UserController : ControllerBase
 {
-    private readonly IUserRepository _userRepository;
+    private readonly IUserService _userService;
     private readonly ILogger<UserController> _logger;
 
-    public UserController(IUserRepository userRepository, ILogger<UserController> logger)
+    public UserController(IUserService userService, ILogger<UserController> logger)
     {
-        _userRepository = userRepository;
+        _userService = userService;
         _logger = logger;
     }
 
     [HttpGet(Name = "GetUsers")]
     public IEnumerable<User> Get()
     {
-        return _userRepository.GetAll();
+        return _userService.GetAll();
     }
 
     [HttpGet("{userId}", Name = "GetUserById")]
     public ActionResult<User> GetById(string userId)
     {
-        var user = _userRepository.GetById(userId);
+        var user = _userService.GetById(userId);
 
         if (user is null)
         {
@@ -38,7 +38,7 @@ public class UserController : ControllerBase
 
         return Ok(user);
     }
-    
+
     [Authorize]
     [HttpGet("me")]
     public ActionResult<User> GetCurrentUser()
@@ -50,9 +50,9 @@ public class UserController : ControllerBase
             return Unauthorized();
         }
 
-        var user = _userRepository.GetByAuthId(authId);
+        var user = _userService.GetByAuthId(authId);
 
-        if (user == null)
+        if (user is null)
         {
             return NotFound();
         }
@@ -63,44 +63,33 @@ public class UserController : ControllerBase
     [HttpGet("{userId}/membership-status", Name = "GetMembershipStatus")]
     public ActionResult<object> GetMembershipStatus(string userId)
     {
-        var user = _userRepository.GetById(userId);
+        var result = _userService.GetMembershipStatus(userId);
 
-        if (user is null)
+        if (result is null)
         {
             return NotFound();
         }
 
-        return Ok(new
-        {
-            userId = user.Id,
-            membershipStatus = user.MembershipStatus.ToString(),
-            isActive = user.MembershipStatus == MembershipStatus.Active
-        });
+        return Ok(result);
     }
 
     [HttpGet("{userId}/membership", Name = "GetMembership")]
     public ActionResult<object> GetMembership(string userId)
     {
-        var user = _userRepository.GetById(userId);
+        var result = _userService.GetMembership(userId);
 
-        if (user is null)
+        if (result is null)
         {
             return NotFound();
         }
 
-        return Ok(new
-        {
-            userId = user.Id,
-            membership = user.Membership.ToString(),
-            membershipType = (int)user.Membership
-        });
+        return Ok(result);
     }
 
     [HttpGet("by-membership/{membershipType}", Name = "GetByMembership")]
     public ActionResult<IEnumerable<User>> GetByMembership(MembershipType membershipType)
     {
-        var users = _userRepository.GetAll()
-            .Where(u => u.Membership == membershipType);
+        var users = _userService.GetByMembership(membershipType);
 
         return Ok(users);
     }
@@ -113,19 +102,7 @@ public class UserController : ControllerBase
             return BadRequest(ModelState);
         }
 
-        var user = new User
-        {
-            AuthId = dto.AuthId,
-            FirstName = dto.FirstName!,
-            LastName = dto.LastName!,
-            Email = dto.Email!,
-            PhoneNumber = dto.PhoneNumber,
-            Membership = dto.Membership,
-            MembershipStatus = dto.MembershipStatus,
-            TimeCreated = DateTime.UtcNow
-        };
-
-        _userRepository.Add(user);
+        var user = _userService.Create(dto);
 
         return CreatedAtRoute("GetUserById", new { userId = user.Id }, user);
     }
@@ -133,18 +110,7 @@ public class UserController : ControllerBase
     [HttpPut("{userId}", Name = "UpdateUser")]
     public IActionResult Update(string userId, [FromBody] UpdateUserDto dto)
     {
-        var updatedUser = new User
-        {
-            Id = userId,
-            FirstName = dto.FirstName!,
-            LastName = dto.LastName!,
-            Email = dto.Email!,
-            PhoneNumber = dto.PhoneNumber,
-            Membership = dto.Membership,
-            MembershipStatus = dto.MembershipStatus
-        };
-
-        var updated = _userRepository.Update(userId, updatedUser);
+        var updated = _userService.Update(userId, dto);
 
         if (!updated)
         {
@@ -157,7 +123,7 @@ public class UserController : ControllerBase
     [HttpDelete("{userId}", Name = "DeleteUser")]
     public IActionResult Delete(string userId)
     {
-        var deleted = _userRepository.Delete(userId);
+        var deleted = _userService.Delete(userId);
 
         if (!deleted)
         {

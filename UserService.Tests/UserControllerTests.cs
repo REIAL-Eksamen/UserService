@@ -3,23 +3,29 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using UserService.Controllers;
 using UserService.Models;
-using UserService.Repositories;
+using UserService.Services;
+using System;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+
 
 namespace UserService.Tests;
 
 [TestClass]
 public class UserControllerTests
 {
-    private Mock<IUserRepository> _mockRepository = null!;
+    private Mock<IUserService> _mockUserService = null!;
     private Mock<ILogger<UserController>> _mockLogger = null!;
     private UserController _controller = null!;
 
     [TestInitialize]
     public void Setup()
     {
-        _mockRepository = new Mock<IUserRepository>();
+        _mockUserService = new Mock<IUserService>();
         _mockLogger = new Mock<ILogger<UserController>>();
-        _controller = new UserController(_mockRepository.Object, _mockLogger.Object);
+
+        _controller = new UserController(
+            _mockUserService.Object,
+            _mockLogger.Object);
     }
 
     [TestMethod]
@@ -39,8 +45,8 @@ public class UserControllerTests
             TimeCreated = DateTime.UtcNow
         };
 
-        _mockRepository
-            .Setup(repository => repository.GetById(userId))
+        _mockUserService
+            .Setup(service => service.GetById(userId))
             .Returns(user);
 
         var result = _controller.GetById(userId);
@@ -59,22 +65,22 @@ public class UserControllerTests
     {
         var userId = Guid.NewGuid().ToString();
 
-        _mockRepository
-            .Setup(repository => repository.GetById(userId))
+        _mockUserService
+            .Setup(service => service.GetById(userId))
             .Returns((User?)null);
 
         var result = _controller.GetById(userId);
 
         Assert.IsInstanceOfType(result.Result, typeof(NotFoundResult));
     }
-    
+
     [TestMethod]
     public void Delete_ReturnsNotFound_WhenUserDoesNotExist()
     {
         var userId = Guid.NewGuid().ToString();
 
-        _mockRepository
-            .Setup(repository => repository.Delete(userId))
+        _mockUserService
+            .Setup(service => service.Delete(userId))
             .Returns(false);
 
         var result = _controller.Delete(userId);

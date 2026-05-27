@@ -20,8 +20,8 @@ builder.Services.AddSingleton<IUserRepository, MongoUserRepository>();
 
 builder.Services.AddScoped<IUserService, UserService.Services.UserService>();
 // Fiks det her med vault
-var jwtIssuer = ""; // skal matche AuthService
-var jwtSecret = ""; // samme som AuthService
+var jwtIssuer = "hat"; // skal matche AuthService
+var jwtSecret = "zxcvbhjiuytrdcvbhytrew234567ujhbvcdrtyhbvcdrtyhbvcdfrtyhbvfrtyhbvcfrtyhbvf"; // samme som AuthService OG DEN SKAL VÆRE LANG LANG
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

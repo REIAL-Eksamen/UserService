@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using UserService.DTOs;
 using UserService.Models;
 using UserService.Services;
+using System.Diagnostics;
 
 namespace UserService.Controllers;
 
@@ -18,6 +19,22 @@ public class UserController : ControllerBase
     {
         _userService = userService;
         _logger = logger;
+    }
+    
+    [HttpGet("version")]
+    public async Task<Dictionary<string,string>> GetVersion()
+    {
+        var properties = new Dictionary<string, string>();
+        var assembly = typeof(Program).Assembly;
+        properties.Add("service", "UserService");
+        var ver = FileVersionInfo.GetVersionInfo(
+            typeof(Program).Assembly.Location).ProductVersion ?? "N/A";
+        properties.Add("version", ver);
+        var hostName = System.Net.Dns.GetHostName();
+        var ips = await System.Net.Dns.GetHostAddressesAsync(hostName);
+        var ipa = ips.First().MapToIPv4().ToString() ?? "N/A";
+        properties.Add("ip-address", ipa);
+        return properties;
     }
 
     [HttpGet(Name = "GetUsers")]

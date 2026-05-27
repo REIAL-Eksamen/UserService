@@ -7,11 +7,15 @@ public class MongoUserRepository : IUserRepository
 {
     private readonly IMongoCollection<User> _users;
 
-    public MongoUserRepository(IConfiguration configuration)
+    public MongoUserRepository(IConfiguration configuration, ILogger<MongoUserRepository> logger)
     {
         var connectionString = configuration["MongoDB:ConnectionString"];
         var databaseName = configuration["MongoDB:DatabaseName"];
         var collectionName = configuration["MongoDB:CollectionName"];
+        
+        logger.LogInformation("MongoDB Database: {Database}", databaseName);
+        logger.LogInformation("MongoDB Collection: {Collection}", collectionName);
+        logger.LogInformation("MongoDB ConnectionString: {Conn}", connectionString);
 
         var client = new MongoClient(connectionString);
         var database = client.GetDatabase(databaseName);

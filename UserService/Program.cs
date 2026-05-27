@@ -12,6 +12,8 @@ BsonSerializer.RegisterSerializer(new GuidSerializer(GuidRepresentation.Standard
 
 var builder = WebApplication.CreateBuilder(args);
 
+Console.WriteLine("JWT KEY USERSERVICE: '" + builder.Configuration["Jwt:Key"] + "'");
+
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
@@ -19,8 +21,8 @@ builder.Services.AddSingleton<IUserRepository, MongoUserRepository>();
 
 builder.Services.AddScoped<IUserService, UserService.Services.UserService>();
 
-var jwtIssuer = builder.Configuration["Jwt__Issuer"] ?? "";
-var jwtSecret = builder.Configuration["Jwt__Key"] ?? "";
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "";
+var jwtSecret = builder.Configuration["Jwt:Key"] ?? "";
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -33,7 +35,7 @@ builder.Services
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
             ValidIssuer = jwtIssuer,
-            ValidAudience = "http://localhost",
+            ValidAudience = builder.Configuration["Jwt:Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(jwtSecret))
         };

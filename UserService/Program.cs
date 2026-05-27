@@ -15,13 +15,12 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
-//denne linje bruges til at tilknytte til CosmosDB i stedet for memorybase.
 builder.Services.AddSingleton<IUserRepository, MongoUserRepository>();
 
 builder.Services.AddScoped<IUserService, UserService.Services.UserService>();
-// Fiks det her med vault
-var jwtIssuer = "hat"; // skal matche AuthService
-var jwtSecret = "zxcvbhjiuytrdcvbhytrew234567ujhbvcdrtyhbvcdrtyhbvcdfrtyhbvfrtyhbvcfrtyhbvf"; // samme som AuthService OG DEN SKAL VÆRE LANG LANG
+
+var jwtIssuer = builder.Configuration["Jwt__Issuer"] ?? "";
+var jwtSecret = builder.Configuration["Jwt__Key"] ?? "";
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -33,14 +32,12 @@ builder.Services
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-
             ValidIssuer = jwtIssuer,
             ValidAudience = "http://localhost",
-
             IssuerSigningKey = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(jwtSecret))
         };
-        
+
         options.Events = new JwtBearerEvents
         {
             OnAuthenticationFailed = context =>
@@ -52,6 +49,7 @@ builder.Services
     });
 
 builder.Services.AddAuthorization();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())

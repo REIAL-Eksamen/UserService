@@ -8,6 +8,10 @@ using System.Diagnostics;
 
 namespace UserService.Controllers;
 
+/// <summary>
+/// REST API-controller til brugerhåndtering.
+/// Eksponerer CRUD-operationer samt opslag på membership og AuthService-ID.
+/// </summary>
 [ApiController]
 [Route("api/users")]
 public class UserController : ControllerBase
@@ -23,6 +27,7 @@ public class UserController : ControllerBase
         _logger.LogInformation("UserController initialized");
     }
     
+    /// <summary>Returnerer service-navn, version og IP — bruges til diagnostik og deployment-verifikation.</summary>
     [HttpGet("version")]
     public async Task<Dictionary<string,string>> GetVersion()
     {
@@ -53,6 +58,7 @@ public class UserController : ControllerBase
         return properties;
     }
 
+    /// <summary>Henter alle brugere — bør kun bruges af admin-funktioner.</summary>
     [HttpGet(Name = "GetUsers")]
     public IEnumerable<User> Get()
     {
@@ -65,6 +71,10 @@ public class UserController : ControllerBase
         return users;
     }
 
+    /// <summary>
+    /// Slår bruger op via AuthService-ID.
+    /// Bruges af BookingService til at oversætte JWT-claimet til et UserDB-ID.
+    /// </summary>
     [HttpGet("by-auth/{authId}", Name = "GetUserByAuthId")]
     public ActionResult<User> GetByAuthId(string authId)
     {
@@ -93,6 +103,10 @@ public class UserController : ControllerBase
         return Ok(user);
     }
 
+    /// <summary>
+    /// Returnerer den aktuelt indloggede bruger baseret på JWT-claimet <c>NameIdentifier</c> (authId).
+    /// Kræver et gyldigt JWT — bruges af frontend til at hente brugerprofil efter login.
+    /// </summary>
     [Authorize]
     [HttpGet("me")]
     public ActionResult<User> GetCurrentUser()
@@ -168,6 +182,10 @@ public class UserController : ControllerBase
         return Ok(users);
     }
 
+    /// <summary>
+    /// Opretter en bruger direkte via HTTP — alternativt sker oprettelse automatisk via RabbitMQ-event.
+    /// Returnerer 201 Created med den oprettede bruger.
+    /// </summary>
     [HttpPost(Name = "CreateUser")]
     public ActionResult<User> Create([FromBody] CreateUserDto dto)
     {

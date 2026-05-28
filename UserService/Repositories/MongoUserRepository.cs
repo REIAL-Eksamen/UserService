@@ -3,6 +3,10 @@ using UserService.Models;
 
 namespace UserService.Repositories;
 
+/// <summary>
+/// MongoDB-implementation af <see cref="IUserRepository"/>.
+/// Forbindelsesoplysninger læses fra konfiguration (appsettings / environment variables).
+/// </summary>
 public class MongoUserRepository : IUserRepository
 {
     private readonly IMongoCollection<User> _users;
@@ -12,7 +16,7 @@ public class MongoUserRepository : IUserRepository
         var connectionString = configuration["MongoDB:ConnectionString"];
         var databaseName = configuration["MongoDB:DatabaseName"];
         var collectionName = configuration["MongoDB:CollectionName"];
-        
+
         logger.LogInformation("MongoDB Database: {Database}", databaseName);
         logger.LogInformation("MongoDB Collection: {Collection}", collectionName);
         logger.LogInformation("MongoDB ConnectionString: {Conn}", connectionString);
@@ -22,23 +26,33 @@ public class MongoUserRepository : IUserRepository
         _users = database.GetCollection<User>(collectionName);
     }
 
+    /// <summary>Henter alle brugere — svarer til SELECT * uden filtrering.</summary>
     public IEnumerable<User> GetAll() =>
         _users.Find(_ => true).ToList();
 
     public User? GetById(string id) =>
         _users.Find(u => u.Id == id).FirstOrDefault();
-    
+
+    /// <summary>
+    /// Finder bruger via AuthService-ID.
+    /// Bruges når JWT-claimet <c>NameIdentifier</c> skal omsættes til en UserDB-bruger.
+    /// </summary>
     public User? GetByAuthId(string authId) =>
         _users.Find(u => u.AuthId == authId).FirstOrDefault();
 
     public void Add(User user)
     {
-        user.Id = null; // MongoDB creates _id automatically
+        // Nulstil Id så MongoDB genererer et nyt ObjectId — forhindrer konflikter ved genbrug af objekter
+        user.Id = null;
         user.TimeCreated = DateTime.UtcNow;
 
         _users.InsertOne(user);
     }
 
+    /// <summary>
+    /// Erstatter hele dokumentet (ReplaceOne) frem for at opdatere enkeltfelter.
+    /// ID'et tvinges inden erstatningen for at sikre konsistens.
+    /// </summary>
     public bool Update(string id, User updatedUser)
     {
         updatedUser.Id = id;

@@ -4,8 +4,11 @@ using UserService.Repositories;
 
 namespace UserService.Services;
 
-// UserService indeholder brugerlogikken.
-// Repository-laget bruges kun til at hente og gemme data.
+/// <summary>
+/// Forretningslogik for brugerhåndtering.
+/// Fungerer som mellemled mellem controlleren og repository-laget —
+/// mapper DTOs til domæneobjekter og håndterer forretningsregler.
+/// </summary>
 public class UserService : IUserService
 {
     private readonly IUserRepository _repository;
@@ -30,6 +33,9 @@ public class UserService : IUserService
         return _repository.GetByAuthId(authId);
     }
 
+    /// <summary>
+    /// Mapper <see cref="CreateUserDto"/> til et <see cref="User"/>-domæneobjekt og persisterer det.
+    /// </summary>
     public User Create(CreateUserDto dto)
     {
         var user = new User
@@ -49,6 +55,10 @@ public class UserService : IUserService
         return user;
     }
 
+    /// <summary>
+    /// Mapper <see cref="UpdateUserDto"/> til et nyt User-objekt med det eksisterende ID.
+    /// AuthId og TimeCreated bevares ikke — de stammer altid fra oprettelsestidspunktet.
+    /// </summary>
     public bool Update(string userId, UpdateUserDto dto)
     {
         var updatedUser = new User
@@ -70,14 +80,14 @@ public class UserService : IUserService
         return _repository.Delete(userId);
     }
 
+    /// <summary>
+    /// Returnerer et let objekt med membership-status og en praktisk <c>isActive</c>-boolean,
+    /// så klienter slipper for at parse enum-strenge selv.
+    /// </summary>
     public object? GetMembershipStatus(string userId)
     {
         var user = _repository.GetById(userId);
-
-        if (user is null)
-        {
-            return null;
-        }
+        if (user is null) return null;
 
         return new
         {
@@ -87,19 +97,19 @@ public class UserService : IUserService
         };
     }
 
+    /// <summary>
+    /// Returnerer både enum-navn og numerisk værdi, så klienter kan bruge hvad der passer dem.
+    /// </summary>
     public object? GetMembership(string userId)
     {
         var user = _repository.GetById(userId);
-
-        if (user is null)
-        {
-            return null;
-        }
+        if (user is null) return null;
 
         return new
         {
             userId = user.Id,
             membership = user.Membership.ToString(),
+            // Numerisk værdi gør det nemt at sammenligne uden string-parsing på klientsiden
             membershipType = (int)user.Membership
         };
     }

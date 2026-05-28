@@ -1,3 +1,4 @@
+using MassTransit;
 using Scalar.AspNetCore;
 using UserService.Repositories;
 using MongoDB.Bson;
@@ -34,6 +35,21 @@ try
 
     builder.Services.AddSingleton<IUserRepository, MongoUserRepository>();
     builder.Services.AddScoped<IUserService, UserService.Services.UserService>();
+
+    builder.Services.AddMassTransit(x =>
+    {
+        x.AddConsumer<UserService.Consumers.UserRegisteredConsumer>();
+
+        x.UsingRabbitMq((context, cfg) =>
+        {
+            cfg.Host(builder.Configuration["RabbitMQ:Host"] ?? "rabbitmq", "/", h =>
+            {
+                h.Username("guest");
+                h.Password("guest");
+            });
+            cfg.ConfigureEndpoints(context);
+        });
+    });
 
     var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "";
     var jwtSecret = builder.Configuration["Jwt:Key"] ?? "";

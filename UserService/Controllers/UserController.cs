@@ -65,6 +65,17 @@ public class UserController : ControllerBase
         return users;
     }
 
+    [HttpGet("by-auth/{authId}", Name = "GetUserByAuthId")]
+    public ActionResult<User> GetByAuthId(string authId)
+    {
+        var user = _userService.GetByAuthId(authId);
+
+        if (user is null)
+            return NotFound();
+
+        return Ok(user);
+    }
+
     [HttpGet("{userId}", Name = "GetUserById")]
     public ActionResult<User> GetById(string userId)
     {

@@ -1,132 +1,240 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using UserService.DTOs;
 using UserService.Models;
-using UserService.DTOs; // ← tilføjet
+using UserService.Services;
+using System.Diagnostics;
 
 namespace UserService.Controllers;
 
+/// <summary>
+/// REST API-controller til brugerhåndtering.
+/// Eksponerer CRUD-operationer samt opslag på membership og AuthService-ID.
+/// </summary>
 [ApiController]
-[Route("[controller]")]
+[Route("api/users")]
 public class UserController : ControllerBase
 {
-    private static readonly List<User> Users = new()
-    {
-        new User
-        {
-            UserId = Guid.Parse("11111111-1111-1111-1111-111111111111"),
-            FirstName = "Enni",
-            LastName = "Korhonen",
-            Email = "enni@example.com",
-            PhoneNumber = "12345678",
-            Role = RoleType.Member,
-            MembershipStatus = MembershipStatus.Active,
-            TimeCreated = DateTime.UtcNow
-        },
-        new User
-        {
-            UserId = Guid.Parse("22222222-2222-2222-2222-222222222222"),
-            FirstName = "Eman",
-            LastName = "Habash",
-            Email = "eman@example.com",
-            PhoneNumber = "87654321",
-            Role = RoleType.Admin,
-            MembershipStatus = MembershipStatus.Active,
-            TimeCreated = DateTime.UtcNow
-        }
-    };
-
+    private readonly IUserService _userService;
     private readonly ILogger<UserController> _logger;
 
-    public UserController(ILogger<UserController> logger)
+    public UserController(IUserService userService, ILogger<UserController> logger)
     {
+        _userService = userService;
         _logger = logger;
+
+        _logger.LogInformation("UserController initialized");
+    }
+    
+    /// <summary>Returnerer service-navn, version og IP — bruges til diagnostik og deployment-verifikation.</summary>
+    [HttpGet("version")]
+    public async Task<Dictionary<string,string>> GetVersion()
+    {
+        _logger.LogInformation("Version endpoint called");
+
+        var properties = new Dictionary<string, string>();
+        var assembly = typeof(Program).Assembly;
+
+        properties.Add("service", "UserService");
+
+        var ver = FileVersionInfo.GetVersionInfo(
+            typeof(Program).Assembly.Location).ProductVersion ?? "N/A";
+
+        properties.Add("version", ver);
+
+        var hostName = System.Net.Dns.GetHostName();
+        var ips = await System.Net.Dns.GetHostAddressesAsync(hostName);
+        var ipa = ips.First().MapToIPv4().ToString() ?? "N/A";
+
+        properties.Add("ip-address", ipa);
+
+        _logger.LogInformation(
+            "Version endpoint returned service={Service}, version={Version}, ip={IpAddress}",
+            properties["service"],
+            properties["version"],
+            properties["ip-address"]);
+
+        return properties;
     }
 
-    // ← tilføjet hjælpemetode
-    private static UserResponseDto MapToDto(User u) => new()
-    {
-        UserId = u.UserId,
-        FirstName = u.FirstName,
-        LastName = u.LastName,
-        Email = u.Email,
-        PhoneNumber = u.PhoneNumber,
-        Role = u.Role.ToString(),
-        MembershipStatus = u.MembershipStatus.ToString(),
-        TimeCreated = u.TimeCreated
-    };
-
+    /// <summary>Henter alle brugere — bør kun bruges af admin-funktioner.</summary>
     [HttpGet(Name = "GetUsers")]
-    public IEnumerable<UserResponseDto> Get() // ← User → UserResponseDto
+    public IEnumerable<User> Get()
     {
-        return Users.Select(MapToDto);
+        _logger.LogInformation("Fetching all users");
+
+        var users = _userService.GetAll().ToList();
+
+        _logger.LogInformation("Returned {UserCount} users", users.Count);
+
+        return users;
+    }
+
+    /// <summary>
+    /// Slår bruger op via AuthService-ID.
+    /// Bruges af BookingService til at oversætte JWT-claimet til et UserDB-ID.
+    /// </summary>
+    [HttpGet("by-auth/{authId}", Name = "GetUserByAuthId")]
+    public ActionResult<User> GetByAuthId(string authId)
+    {
+        var user = _userService.GetByAuthId(authId);
+
+        if (user is null)
+            return NotFound();
+
+        return Ok(user);
     }
 
     [HttpGet("{userId}", Name = "GetUserById")]
-    public ActionResult<UserResponseDto> GetById(Guid userId) // ← User → UserResponseDto
+    public ActionResult<User> GetById(string userId)
     {
-        var user = Users.FirstOrDefault(u => u.UserId == userId);
+        _logger.LogInformation("Fetching user by id {UserId}", userId);
+
+        var user = _userService.GetById(userId);
 
         if (user is null)
         {
+            _logger.LogWarning("User not found with id {UserId}", userId);
             return NotFound();
         }
 
-        return Ok(MapToDto(user)); // ← MapToDto tilføjet
+        _logger.LogInformation("User found with id {UserId}", userId);
+        return Ok(user);
+    }
+
+    /// <summary>
+    /// Returnerer den aktuelt indloggede bruger baseret på JWT-claimet <c>NameIdentifier</c> (authId).
+    /// Kræver et gyldigt JWT — bruges af frontend til at hente brugerprofil efter login.
+    /// </summary>
+    [Authorize]
+    [HttpGet("me")]
+    public ActionResult<User> GetCurrentUser()
+    {
+        _logger.LogInformation("Fetching current authenticated user");
+
+        var authId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (string.IsNullOrEmpty(authId))
+        {
+            _logger.LogWarning("Current user request failed because authId claim was missing");
+            return Unauthorized();
+        }
+
+        var user = _userService.GetByAuthId(authId);
+
+        if (user is null)
+        {
+            _logger.LogWarning("No user found for authId {AuthId}", authId);
+            return NotFound();
+        }
+
+        _logger.LogInformation("Current user found for authId {AuthId}", authId);
+        return Ok(user);
     }
 
     [HttpGet("{userId}/membership-status", Name = "GetMembershipStatus")]
-    public ActionResult<object> GetMembershipStatus(Guid userId) // ← uændret
+    public ActionResult<object> GetMembershipStatus(string userId)
     {
-        var user = Users.FirstOrDefault(u => u.UserId == userId);
+        _logger.LogInformation("Fetching membership status for user {UserId}", userId);
 
-        if (user is null)
+        var result = _userService.GetMembershipStatus(userId);
+
+        if (result is null)
         {
+            _logger.LogWarning("Membership status not found for user {UserId}", userId);
             return NotFound();
         }
 
-        return Ok(new
-        {
-            userId = user.UserId,
-            membershipStatus = user.MembershipStatus.ToString(),
-            isActive = user.MembershipStatus == MembershipStatus.Active
-        });
+        _logger.LogInformation("Membership status returned for user {UserId}", userId);
+        return Ok(result);
     }
 
-    [HttpPost(Name = "CreateUser")]
-    public ActionResult<UserResponseDto> Create(CreateUserDto dto) // ← User → CreateUserDto
+    [HttpGet("{userId}/membership", Name = "GetMembership")]
+    public ActionResult<object> GetMembership(string userId)
     {
-        var user = new User
-        {
-            UserId = Guid.NewGuid(),
-            FirstName = dto.FirstName,
-            LastName = dto.LastName,
-            Email = dto.Email,
-            PhoneNumber = dto.PhoneNumber,
-            Role = dto.Role,
-            MembershipStatus = dto.MembershipStatus,
-            TimeCreated = DateTime.UtcNow
-        };
+        _logger.LogInformation("Fetching membership for user {UserId}", userId);
 
-        Users.Add(user);
-        return CreatedAtRoute("GetUserById", new { userId = user.UserId }, MapToDto(user));
+        var result = _userService.GetMembership(userId);
+
+        if (result is null)
+        {
+            _logger.LogWarning("Membership not found for user {UserId}", userId);
+            return NotFound();
+        }
+
+        _logger.LogInformation("Membership returned for user {UserId}", userId);
+        return Ok(result);
+    }
+
+    [HttpGet("by-membership/{membershipType}", Name = "GetByMembership")]
+    public ActionResult<IEnumerable<User>> GetByMembership(MembershipType membershipType)
+    {
+        _logger.LogInformation("Fetching users by membership type {MembershipType}", membershipType);
+
+        var users = _userService.GetByMembership(membershipType).ToList();
+
+        _logger.LogInformation(
+            "Returned {UserCount} users with membership type {MembershipType}",
+            users.Count,
+            membershipType);
+
+        return Ok(users);
+    }
+
+    /// <summary>
+    /// Opretter en bruger direkte via HTTP — alternativt sker oprettelse automatisk via RabbitMQ-event.
+    /// Returnerer 201 Created med den oprettede bruger.
+    /// </summary>
+    [HttpPost(Name = "CreateUser")]
+    public ActionResult<User> Create([FromBody] CreateUserDto dto)
+    {
+        _logger.LogInformation("Create user request received");
+
+        if (!ModelState.IsValid)
+        {
+            _logger.LogWarning("Create user request failed because model state is invalid");
+            return BadRequest(ModelState);
+        }
+
+        var user = _userService.Create(dto);
+
+        _logger.LogInformation("User created with id {UserId}", user.Id);
+
+        return CreatedAtRoute("GetUserById", new { userId = user.Id }, user);
     }
 
     [HttpPut("{userId}", Name = "UpdateUser")]
-    public IActionResult Update(Guid userId, UpdateUserDto dto) // ← User → UpdateUserDto
+    public IActionResult Update(string userId, [FromBody] UpdateUserDto dto)
     {
-        var existingUser = Users.FirstOrDefault(u => u.UserId == userId);
+        _logger.LogInformation("Update user request received for user {UserId}", userId);
 
-        if (existingUser is null)
+        var updated = _userService.Update(userId, dto);
+
+        if (!updated)
         {
+            _logger.LogWarning("Update failed because user was not found. UserId={UserId}", userId);
             return NotFound();
         }
 
-        existingUser.FirstName = dto.FirstName;
-        existingUser.LastName = dto.LastName;
-        existingUser.Email = dto.Email;
-        existingUser.PhoneNumber = dto.PhoneNumber;
-        existingUser.Role = dto.Role;
-        existingUser.MembershipStatus = dto.MembershipStatus;
+        _logger.LogInformation("User updated with id {UserId}", userId);
+        return NoContent();
+    }
 
+    [HttpDelete("{userId}", Name = "DeleteUser")]
+    public IActionResult Delete(string userId)
+    {
+        _logger.LogInformation("Delete user request received for user {UserId}", userId);
+
+        var deleted = _userService.Delete(userId);
+
+        if (!deleted)
+        {
+            _logger.LogWarning("Delete failed because user was not found. UserId={UserId}", userId);
+            return NotFound();
+        }
+
+        _logger.LogInformation("User deleted with id {UserId}", userId);
         return NoContent();
     }
 }
